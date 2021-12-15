@@ -5,32 +5,83 @@ from ecpy.curves import Curve
 from Crypto.Hash import SHA3_256
 from Crypto import Random   # a bit better secure random number generation 
 import math
+# kanka, test 'i true yapince bu fonksiyonlar slayttaki 
+# curve degerlerini returnliyor. 
+# gecen aksam beraber baktigimiz ornegi test etmek icin 
+# bunu True olarak isaretkle.
+test = False
+__E__ = Curve.get_curve('secp256k1')
 
-E = Curve.get_curve('secp256k1')
-n = E.order
-p = E.field
-P = E.generator
-a = E.a
-b = E.b
-print("Base point:\n", P)
-print("p :", p)
-print("a :", a)
-print("b :", b)
-print("n :", n)
+#asagidaki degerleri yanlislikla modifiye etmeyelim die fonksiyon
+#icine aldim. pythonda constant variable yokmus.
+def _n_():
+    if(test):
+        return 7
+    else:
+        ret = __E__.order
+        return ret
+def _p_():
+    if(test):
+        return 5
+    else:
+        ret =__E__.field
+        return ret
+def _P_():
+    if(test):
+        return (1,3)
+    else:
+        ret =__E__.generator
+        return tuple((ret.x,ret.y))
+def _a_():
+    if(test):
+        return 2
+    else:
+        ret =__E__.a
+        return ret
+def _b_():
+    if(test):
+        return 1
+    else:
+        ret =__E__.b
+        return ret
+print("Base point:\n", _P_())
+print("p :", _p_())
+print("a :", _a_())
+print("b :", _b_())
+print("n :", _n_())
 
+"""
 k = Random.new().read(int(math.log(n,2)))
 k = int.from_bytes(k, byteorder='big')%n
 
 Q = k*P
 print("\nQ:\n", Q)
 print("Q on curve?", E.is_on_curve(Q))
+"""
    
-#generate public-private key pair, 
 
-#identity public key of the server.
-Iks_Pub = (93223115898197558905062012489877327981787036929201444813217704012422483432813, 8985629203225767185464920094198364255740987346743912071843303975587695337619)
-#%%
+
 ### FUNCTIONS #############################################
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:\
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
 def egcd(a, b):
     x,y, u,v = 0,1, 1,0
     while a != 0:
@@ -54,20 +105,18 @@ def modinv(a, m):
     # https://www.nayuki.io/page/elliptic-curve-point-addition-in-projective-coordinates
 
 
-def Add(P,Q,p,a):
+def Add(P,Q):
     slope = 0
     px, py = P[0], P[1]
     qx, qy = Q[0], Q[1]
     if(P==Q):
-        
         if(P==(0,0)):
             return(0,0)
         else:
             if(py==0):
                 return (0,0)
             else:
-                slope = ((3*pow(px,2)+a) * modinv((2*py),p))% p
-
+                slope = ((3*pow(px,2)+_a_()) * modinv((2*py),_p_()))% _p_()
     if(P!=Q):
         if(P==(0,0)):
             return Q
@@ -77,33 +126,36 @@ def Add(P,Q,p,a):
             if(px==qx):
                 return(0,0)
             else:
-                slope = (((py - qx)) * modinv((px - qx),p)) % p
+                slope = (((py - qy)) * modinv((px - qx),_p_())) % _p_()
     
-    rx = (pow(slope,2)-px-qx) % p
-    ry = (-py + slope*(px-rx)) %p
+    rx = (pow(slope,2)-px-qx) % _p_()
+    ry = (-py + slope*(px-rx)) % _p_()
     
     return (rx,ry)
 
-def Multiply(k:int,P,p,a):
+def Multiply(k:int,P):
     Result = P
     for i in range(0,k-1):
-        print(i, Result)
-        Result = Addition(Result,P,p,a)
-    
+        #printProgressBar(i,k-1,)
+        
+        Result = Add(Result,P)
+        print(i,Result)
     return Result
 
-def GenerateSignature(P,M,S_a,n,p,a):
+# bu fonksiyon yazildi ama test edilmedi. 
+#ACCEPTS M AS INTEGER
+def GenerateSignature(P,M,S_a):
     # STEP BY STEP
     
     # STEP 1
-    k= randint(1,n-2)
+    k= randint(1,_n_()-2)
     
     # STEP 2
-    R = Multiply(k,P,p,a)
+    R = Multiply(k,_P_())
     
     # STEP 3
     rx,ry = R[0], R[1]
-    r = rx % n
+    r = rx % _n_()
     
     # STEP 4    
     #concatenate M & r
@@ -112,24 +164,24 @@ def GenerateSignature(P,M,S_a,n,p,a):
     RM_bytes = RM.to_bytes((RM.bit_length() + 7) // 8, byteorder='big')
     hash = SHA3_256.new(RM_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
-    h = digest % n
+    h = digest % _n_()
     
     # STEP 5
-    s =(k-S_a*h) % n
+    s =(k-S_a*h) % _n_()
     
     # STEP 6
     # the signature is h, s tuple.
     return (h,s)
 
-def VerifySignature(Signature,M,Q_a,P,n,p,a):
+def VerifySignature(Signature,M,Q_a):
     
     h,s = Signature[0],Signature[1]
     # STEP 1    
-    V = Add(Multiply(s,P,p,a),Multiply(h,Q_a,p,a),p,a)
+    V = Add(Multiply(s,_P_()),Multiply(h,Q_a))
     
     # STEP 2
     vx, vy = V[0], V[1]
-    v = vx % n
+    v = vx % _n_()
     
     # STEP 3   
     #concatenate v||M
@@ -138,16 +190,24 @@ def VerifySignature(Signature,M,Q_a,P,n,p,a):
     VM_bytes = VM.to_bytes((VM.bit_length() + 7) // 8, byteorder='big')
     hash = SHA3_256.new(VM_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
-    h_ = digest % n
+    h_ = digest % _n_()
     
     return h == h_
         
 ### END FUNCTIONS #############################################
  #%%
-#generate public-private key pair,
+ #teste true yap ve slaytlardan kontrol et, dogru calisiyor
+pointP = (1,3)
+print(Multiply(5,pointP))
+ #%%
+#server's public identity key
+ServPubIK= (93223115898197558905062012489877327981787036929201444813217704012422483432813, 8985629203225767185464920094198364255740987346743912071843303975587695337619)
 
+#generate public-private key pair,
 #Random secret key generation:
-S_a = randint(1,n-2)
+PrivIK = randint(1,_n_()-2)
 #Compute the public key:
-Q_a = Mult(S_a, P,p,a)
-#Signature Generation
+print("Generating Public Identity Key")
+PubIK = Multiply(PrivIK, _P_())
+
+
