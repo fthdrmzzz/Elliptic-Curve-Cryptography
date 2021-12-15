@@ -93,26 +93,55 @@ def Multiply(k:int,P,p,a):
     return Result
 
 def GenerateSignature(P,M,S_a,n,p,a):
-    #generate a random k : 0<k<n-1
+    # STEP BY STEP
+    
+    # STEP 1
     k= randint(1,n-2)
-    #compute R = k*P
+    
+    # STEP 2
     R = Multiply(k,P,p,a)
-    #compute r, x coordinate of R
+    
+    # STEP 3
     rx,ry = R[0], R[1]
     r = rx % n
     
+    # STEP 4    
     #concatenate M & r
-    M_ = (M << r.bit_length()) + r
+    RM = (r << M.bit_length()) + M
     #calculate h
-    #change the line below if M is not given as string
-    hash = SHA3_256.new(M_.encode('utf-8')) # hash it
+    RM_bytes = RM.to_bytes((RM.bit_length() + 7) // 8, byteorder='big')
+    hash = SHA3_256.new(RM_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
-    h = h % n
-    #calculate s
+    h = digest % n
+    
+    # STEP 5
     s =(k-S_a*h) % n
+    
+    # STEP 6
     # the signature is h, s tuple.
     return (h,s)
+
+def VerifySignature(Signature,M,Q_a,P,n,p,a):
     
+    h,s = Signature[0],Signature[1]
+    # STEP 1    
+    V = Add(Multiply(s,P,p,a),Multiply(h,Q_a,p,a),p,a)
+    
+    # STEP 2
+    vx, vy = V[0], V[1]
+    v = vx % n
+    
+    # STEP 3   
+    #concatenate v||M
+    VM = (v << M.bit_length()) + M
+    #calculate h
+    VM_bytes = VM.to_bytes((VM.bit_length() + 7) // 8, byteorder='big')
+    hash = SHA3_256.new(VM_bytes) # hash it
+    digest = int.from_bytes(hash.digest(), byteorder='big') 
+    h_ = digest % n
+    
+    return h == h_
+        
 ### END FUNCTIONS #############################################
  #%%
 #generate public-private key pair,
@@ -122,6 +151,3 @@ S_a = randint(1,n-2)
 #Compute the public key:
 Q_a = Mult(S_a, P,p,a)
 #Signature Generation
-
-Ika.Pri
-Ika_Pub
