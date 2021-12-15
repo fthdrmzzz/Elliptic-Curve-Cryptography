@@ -92,7 +92,7 @@ def Multiply(k:int,P,p,a):
     
     return Result
 
-def GenerateSignature(P,M,n,p,a):
+def GenerateSignature(P,M,S_a,n,p,a):
     #generate a random k : 0<k<n-1
     k= randint(1,n-2)
     #compute R = k*P
@@ -103,9 +103,15 @@ def GenerateSignature(P,M,n,p,a):
     
     #concatenate M & r
     M_ = (M << r.bit_length()) + r
-    
+    #calculate h
+    #change the line below if M is not given as string
     hash = SHA3_256.new(M_.encode('utf-8')) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
+    h = h % n
+    #calculate s
+    s =(k-S_a*h) % n
+    # the signature is h, s tuple.
+    return (h,s)
     
 ### END FUNCTIONS #############################################
  #%%
