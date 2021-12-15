@@ -30,6 +30,7 @@ print("Q on curve?", E.is_on_curve(Q))
 #identity public key of the server.
 Iks_Pub = (93223115898197558905062012489877327981787036929201444813217704012422483432813, 8985629203225767185464920094198364255740987346743912071843303975587695337619)
 #%%
+### FUNCTIONS #############################################
 def egcd(a, b):
     x,y, u,v = 0,1, 1,0
     while a != 0:
@@ -50,22 +51,40 @@ def modinv(a, m):
     
     # eger p ve q esitse  y sifirsa 0,0 dondur.
     # ve p  q esit degilse, px qx aynisya 0,0 dondur.
-def Addition(P,Q,p,a):
-    slope = 0
-    
-    if(P==Q):
-        slope = ((3*pow(P[0],2)+a) * modinv((2*P[1]),p))% p
-    #elif P[0] == Q[0]:
-       #    return Addition(P,P,p,a)
-    if(P!=Q):
-        slope = (((P[1] - Q[1])) * modinv((P[0] - Q[0]),p)) % p
-    
-    xr = (pow(slope,2)-P[0]-Q[0]) % p
-    yr = (-P[1] + slope*(P[0]-xr)) %p
-    
-    return (xr,yr)
+    # https://www.nayuki.io/page/elliptic-curve-point-addition-in-projective-coordinates
 
-def Mult(k:int,P,p,a):
+
+def Add(P,Q,p,a):
+    slope = 0
+    px, py = P[0], P[1]
+    qx, qy = Q[0], Q[1]
+    if(P==Q):
+        
+        if(P==(0,0)):
+            return(0,0)
+        else:
+            if(py==0):
+                return (0,0)
+            else:
+                slope = ((3*pow(px,2)+a) * modinv((2*py),p))% p
+
+    if(P!=Q):
+        if(P==(0,0)):
+            return Q
+        elif(Q==(0,0)):
+            return P
+        else:
+            if(px==qx):
+                return(0,0)
+            else:
+                slope = (((py - qx)) * modinv((px - qx),p)) % p
+    
+    rx = (pow(slope,2)-px-qx) % p
+    ry = (-py + slope*(px-rx)) %p
+    
+    return (rx,ry)
+
+def Multiply(k:int,P,p,a):
     Result = P
     for i in range(0,k-1):
         print(i, Result)
@@ -73,17 +92,30 @@ def Mult(k:int,P,p,a):
     
     return Result
 
-
-
+def GenerateSignature(P,M,n,p,a):
+    #generate a random k : 0<k<n-1
+    k= randint(1,n-2)
+    #compute R = k*P
+    R = Multiply(k,P,p,a)
+    #compute r, x coordinate of R
+    rx,ry = R[0], R[1]
+    r = rx % n
+    
+    #concatenate M & r
+    M_ = (M << r.bit_length()) + r
+    
+    hash = SHA3_256.new(M_.encode('utf-8')) # hash it
+    digest = int.from_bytes(hash.digest(), byteorder='big') 
+    
+### END FUNCTIONS #############################################
  #%%
-Addition((5,0),(5,0),7,1)       
- #%%
-        print(Mult(8,(1,3),5,2))
-        #%%
 #generate public-private key pair,
 
 #Random secret key generation:
 S_a = randint(1,n-2)
 #Compute the public key:
+Q_a = Mult(S_a, P,p,a)
+#Signature Generation
+
 Ika.Pri
 Ika_Pub
