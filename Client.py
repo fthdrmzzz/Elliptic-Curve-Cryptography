@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 
 from random import randint, seed
 from ecpy.curves import Curve
@@ -10,50 +10,49 @@ import math
 # gecen aksam beraber baktigimiz ornegi test etmek icin 
 # bunu True olarak isaretkle.
 test = False
-__E__ = Curve.get_curve('secp256k1')
+_E_ = Curve.get_curve('secp256k1')
 
 #asagidaki degerleri yanlislikla modifiye etmeyelim die fonksiyon
 #icine aldim. pythonda constant variable yokmus.
-def _n_():
+def n():
     if(test):
         return 7
     else:
-        ret = __E__.order
+        ret = _E_.order
         return ret
-def _p_():
+def p():
     if(test):
         return 5
     else:
-        ret =__E__.field
+        ret =_E_.field
         return ret
-def _P_():
+def P():
     if(test):
         return (1,3)
     else:
-        ret =__E__.generator
+        ret =_E_.generator
         return tuple((ret.x,ret.y))
-def _a_():
+def a():
     if(test):
         return 2
     else:
-        ret =__E__.a
+        ret =_E_.a
         return ret
-def _b_():
+def b():
     if(test):
         return 1
     else:
-        ret =__E__.b
+        ret =_E_.b
         return ret
-print("Base point:\n", _P_())
-print("p :", _p_())
-print("a :", _a_())
-print("b :", _b_())
-print("n :", _n_())
+print("Base point:\n", P())
+print("p :", p())
+print("a :", a())
+print("b :", b())
+print("n :", n())
 
 """
 k = Random.new().read(int(math.log(n,2)))
 k = int.from_bytes(k, byteorder='big')%n
-
 Q = k*P
 print("\nQ:\n", Q)
 print("Q on curve?", E.is_on_curve(Q))
@@ -62,7 +61,7 @@ print("Q on curve?", E.is_on_curve(Q))
 
 
 ### FUNCTIONS #############################################
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '?', printEnd = "\r"):
     """
     Call in a loop to create terminal progress bar
     @params:\
@@ -116,7 +115,7 @@ def Add(P,Q):
             if(py==0):
                 return (0,0)
             else:
-                slope = ((3*pow(px,2)+_a_()) * modinv((2*py),_p_()))% _p_()
+                slope = ((3*pow(px,2)+a()) * modinv((2*py),p()))% p()
     if(P!=Q):
         if(P==(0,0)):
             return Q
@@ -126,10 +125,10 @@ def Add(P,Q):
             if(px==qx):
                 return(0,0)
             else:
-                slope = (((py - qy)) * modinv((px - qx),_p_())) % _p_()
+                slope = (((py - qy)) * modinv((px - qx),p())) % p()
     
-    rx = (pow(slope,2)-px-qx) % _p_()
-    ry = (-py + slope*(px-rx)) % _p_()
+    rx = (pow(slope,2)-px-qx) % p()
+    ry = (-py + slope*(px-rx)) % p()
     
     return (rx,ry)
 
@@ -139,8 +138,23 @@ def Multiply(k:int,P):
         #printProgressBar(i,k-1,)
         
         Result = Add(Result,P)
-        print(i,Result)
+        #print(i,Result)
     return Result
+
+
+def KeyGenration(Public):
+    #Random secret key generation:
+    print("\nPublic KEY generation")
+    #s_A= randint(1,n()-2)
+    s_A= randint(1,10000)
+    print("Random number s_A is ",s_A)
+
+    #Compute the public key:
+    #Q_A is the public key
+    Q_A = Multiply(s_A, Public)
+    print("Q_A is ",Q_A)
+
+    return Q_A
 
 # bu fonksiyon yazildi ama test edilmedi. 
 #ACCEPTS M AS INTEGER
@@ -148,14 +162,16 @@ def GenerateSignature(P,M,S_a):
     # STEP BY STEP
     
     # STEP 1
-    k= randint(1,_n_()-2)
+    #k is s_A
+    k= randint(1,n()-2)
     
     # STEP 2
-    R = Multiply(k,_P_())
+    #R is Q_A
+    R = Multiply(k,P)
     
     # STEP 3
     rx,ry = R[0], R[1]
-    r = rx % _n_()
+    r = rx % n()
     
     # STEP 4    
     #concatenate M & r
@@ -164,10 +180,10 @@ def GenerateSignature(P,M,S_a):
     RM_bytes = RM.to_bytes((RM.bit_length() + 7) // 8, byteorder='big')
     hash = SHA3_256.new(RM_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
-    h = digest % _n_()
+    h = digest % n()
     
     # STEP 5
-    s =(k-S_a*h) % _n_()
+    s =(k-S_a*h) % n()
     
     # STEP 6
     # the signature is h, s tuple.
@@ -177,11 +193,11 @@ def VerifySignature(Signature,M,Q_a):
     
     h,s = Signature[0],Signature[1]
     # STEP 1    
-    V = Add(Multiply(s,_P_()),Multiply(h,Q_a))
+    V = Add(Multiply(s,P()),Multiply(h,Q_a))
     
     # STEP 2
     vx, vy = V[0], V[1]
-    v = vx % _n_()
+    v = vx % n()
     
     # STEP 3   
     #concatenate v||M
@@ -190,7 +206,7 @@ def VerifySignature(Signature,M,Q_a):
     VM_bytes = VM.to_bytes((VM.bit_length() + 7) // 8, byteorder='big')
     hash = SHA3_256.new(VM_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
-    h_ = digest % _n_()
+    h_ = digest % n()
     
     return h == h_
         
@@ -202,12 +218,18 @@ print(Multiply(5,pointP))
  #%%
 #server's public identity key
 ServPubIK= (93223115898197558905062012489877327981787036929201444813217704012422483432813, 8985629203225767185464920094198364255740987346743912071843303975587695337619)
-
+"""
+Public KEY generation
+Random number s_A is  7546
+Q_A is  (87535894158095520824325068259954455295733891190513406969582947246123914785959, 48028079269525428442804774157116932826724800026095805835175339939845548587240)
+"""
 #generate public-private key pair,
-#Random secret key generation:
-PrivIK = randint(1,_n_()-2)
-#Compute the public key:
-print("Generating Public Identity Key")
-PubIK = Multiply(PrivIK, _P_())
+#Knk fonksiyonda fake random rangei kullandim,
+#multiplication cok uzun suruyor hesaplayamadi
+Q_A_publicKey = KeyGenration(P())
 
-
+"""
+Public KEY generation
+Random number s_A is  5950
+Q_A is  (57391636622241864249838054409219857161376422046440955917844129896230831707812, 39884903221139359768339999990120438978496065562591711856782560734682241297942)
+"""
