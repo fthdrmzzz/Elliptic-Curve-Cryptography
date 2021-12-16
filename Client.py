@@ -6,7 +6,7 @@ import warnings
 from random import randint, seed
 import sys
 from ecpy.curves import Curve, Point
-from Crypto.Hash import HMAC, SHA3_256,SHA256
+from Crypto.Hash import SHA3_256
 from Crypto import Random  # a bit better secure random number generation
 import requests
 
@@ -42,14 +42,6 @@ def SPKReg(h, s, x, y):
         res = response.json()
         return res['SPKPUB.X'], res['SPKPUB.Y'], res['H'], res['S']
 
-#Send OTK Coordinates and corresponding hmac
-def OTKReg(keyID,x,y,hmac):
-    mes = {'ID':stuID, 'KEYID': keyID, 'OTKI.X': x, 'OTKI.Y': y, 'HMACI': hmac}
-    print("Sending message is: ", mes)
-    response = requests.put('{}/{}'.format(API_URL, "OTKReg"), json = mes)
-    print(response.json())
-    if((response.ok) == False): return False
-    else: return True
 
 # kanka, test 'i true yapince bu fonksiyonlar slayttaki
 # curve degerlerini returnliyor. 
@@ -86,7 +78,7 @@ def _P_():
         return (1, 3)
     else:
         ret = __E__.generator
-        return ret  # BURALI DEGISTIRDIM, BU SEKILDE RETURN EDINCE DAHA RAHAT ISLEMLERI GOREBILIYORUZ
+        return ret  # BURAYI DEGISTIRDIM, BU SEKILDE RETURN EDINCE DAHA RAHAT ISLEMLERI GOREBILIYORUZ
 
 
 def _a_():
@@ -324,7 +316,7 @@ print("Section 2.1 passed.\n#\n")
 
 #######################SECTION 2.2#############################
 print("Section 2.2 started.")
-def concatenateIntPair(SPKPUB_x, SPKPUB_y):
+def SPK_Message(SPKPUB_x, SPKPUB_y):
     SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')
     SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')
     concat_bytes = SPKPUB_x_bytes + SPKPUB_y_bytes
@@ -359,7 +351,7 @@ SPKPUB = Point(SPKPUB_x , SPKPUB_y, __E__)
 #END OF MELIH
 """
 
-message = concatenateIntPair(SPKPUB_x, SPKPUB_y)
+message = SPK_Message(SPKPUB_x, SPKPUB_y)
 signature2 = GenerateSignature(_P_(), message, privKey)
 h2, s2 = signature2[0], signature2[1]
 
@@ -375,58 +367,20 @@ result = SPKReg(h2, s2, SPKPUB_x, SPKPUB_y)
 serverSPKPUB_x, serverSPKPUB_y, h, s = result
 serverSPKPUB = Point(serverSPKPUB_x, serverSPKPUB_y, __E__)
 signature = (h, s)
-M = concatenateIntPair(serverSPKPUB_x, serverSPKPUB_y)
+M = SPK_Message(serverSPKPUB_x, serverSPKPUB_y)
 if VerifySignature(signature, M, ServPubIK):
     print("Verified")
 else:
     print("NOT Verified")
-print("Section 2.2 passed.\n#\n")
+print("Section 2.2 passed.")
 
 # Section 2.3
-print("Section 2.4 started.")
 def GenerateHMACKey():
     T = privKeySPK * serverSPKPUB
     Tx_bytes = T.x.to_bytes((T.x.bit_length() + 7) // 8, byteorder='big')
     Ty_bytes = T.x.to_bytes((T.y.bit_length() + 7) // 8, byteorder='big')
-
     U = Tx_bytes + Ty_bytes + b'NoNeedToRideAndHide'
-
-    hash = SHA3_256.new(U)  # hash it
+    hash = SHA3_256(U)
     digest = int.from_bytes(hash.digest(), byteorder='big')
     return digest
-
-
-def GenerateOTKArray():
-    OTK= []
-    for i in range(0,10):
-        #generate public, private key pair
-        OTKprivate, OTKpub = KeyGeneration(_P_())
-        OTKpair = (OTKprivate, OTKpub)
-        OTK.append(OTKpair)
-    return OTK
-
-
-def GenerateHMACArray(OTK,HMACkey):
-    HMACarray = []
-    for OTKpair in OTK:
-        OTKprivate, OTKpub = OTKpair
-        concatOTKpub = concatenateIntPair(OTKpub.x,OTKpub.y)
-        concatOTKpub_bytes = concatOTKpub.to_bytes((concatOTKpub.bit_length() + 7) // 8, byteorder='big')
-
-        HMACkey_bytes = HMACkey.to_bytes((HMACkey.bit_length() + 7) // 8, byteorder='big')
-        hash = HMAC.new(key=HMACkey_bytes, msg=concatOTKpub_bytes, digestmod=SHA256)
-        digest = hash.hexdigest()
-        HMACarray.append(digest)
-    return HMACarray
-
-HMACkey = GenerateHMACKey()
-OTKarray = GenerateOTKArray()
-HMACarray = GenerateHMACArray(OTKarray,HMACkey)
-
-for i in range(0,len(OTKarray)):
-    OTKpair = OTKarray[i]
-    OTKpub = OTKpair[1]
-    OTKReg(i,OTKpub.x,OTKpub.y,HMACarray[i])
-
-
 
