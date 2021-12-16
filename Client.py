@@ -386,8 +386,9 @@ print("Section 2.2 passed.\n#\n")
 print("Section 2.4 started.")
 def GenerateHMACKey():
     T = privKeySPK * serverSPKPUB
-    Tx_bytes = T.x.to_bytes((T.x.bit_length() + 7) // 8, byteorder='big')
-    Ty_bytes = T.x.to_bytes((T.y.bit_length() + 7) // 8, byteorder='big')
+    Tx, Ty = T.x, T.y
+    Tx_bytes = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
+    Ty_bytes = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
 
     U = Tx_bytes + Ty_bytes + b'NoNeedToRideAndHide'
 
