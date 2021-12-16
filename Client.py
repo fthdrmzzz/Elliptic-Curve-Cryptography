@@ -14,6 +14,10 @@ __E__ = Curve.get_curve('secp256k1')
 
 #asagidaki degerleri yanlislikla modifiye etmeyelim die fonksiyon
 #icine aldim. pythonda constant variable yokmus.
+# bir de her fonksiyonda parametre olarak n p a P vermek istemedim artik
+# onun yerine direkt bunlari kullaniyim diye
+# ama farkli curve gerekirse sictik
+
 def _n_():
     if(test):
         return 7
@@ -22,7 +26,7 @@ def _n_():
         return ret
 def _p_():
     if(test):
-        return 5
+        return 101
     else:
         ret =__E__.field
         return ret
@@ -34,13 +38,13 @@ def _P_():
         return tuple((ret.x,ret.y))
 def _a_():
     if(test):
-        return 2
+        return 1
     else:
         ret =__E__.a
         return ret
 def _b_():
     if(test):
-        return 1
+        return 57
     else:
         ret =__E__.b
         return ret
