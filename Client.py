@@ -42,7 +42,7 @@ def SPKReg(h,s,x,y):
 # kanka, test 'i true yapince bu fonksiyonlar slayttaki 
 # curve degerlerini returnliyor. 
 # gecen aksam beraber baktigimiz ornegi test etmek icin 
-# bunu True olarak isaretkle.
+# bunu True olarak isaretle.
 test = False
 __E__ = Curve.get_curve('secp256k1')
 
@@ -210,9 +210,10 @@ def GenerateSignature(P,M,S_a):
     r = R.x % _n_()
     
     # STEP 4    
-    r_shifted = r<< M.bit_length()
-    concat = r_shifted + M
-    hash_byte = concat.to_bytes((concat.bit_length() + 7) // 8, byteorder='big')  
+    r_byte = r.to_bytes((r.bit_length() + 7) // 8, byteorder='big') 
+    M_byte = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big')  
+
+    hash_byte = r_byte+M_byte
     hash = SHA3_256.new(hash_byte) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
     h = digest % _n_()
@@ -235,10 +236,11 @@ def VerifySignature(Signature,M,Q_a):
     
     # STEP 3   
     #concatenate v||M
-    v_shifted = v<< M.bit_length()
-    concat = v_shifted+M
+    v_bytes = v.to_bytes((v.bit_length() + 7) // 8, byteorder='big') 
+    M_bytes = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big') 
+
     #calculate h
-    hash_bytes = concat.to_bytes((concat.bit_length() + 7) // 8, byteorder='big') 
+    hash_bytes = v_bytes + M_bytes
     hash = SHA3_256.new(hash_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
     h_ = digest % _n_()
@@ -300,31 +302,18 @@ if(VerifySignature(signature,stuID,IKPUB) == True):
     print("Verified")
 else:
     print("NOT Verified")
-
-
 print("IK registration phase passed.")
 #%%
 #######################SECTION 2.2#############################
 def SPK_Message(SPKPUB_x,SPKPUB_y):
-    #SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')  
-    #SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')  
+    SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')  
+    SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')  
+    concat_bytes = SPKPUB_x_bytes + SPKPUB_y_bytes
+    message = int.from_bytes(concat_bytes, byteorder='big')
     
-    SPKPUB_x_shifted = SPKPUB_x << SPKPUB_y.bit_length()
-    concat = SPKPUB_x_shifted + SPKPUB_y
-    return concat
-    message = int.from_bytes(concat, byteorder='big')
     return message
-#%%
-#PROOF THAT MODIFIED CONCAT WORKS.
-"""
-one = 1
-eight = 8
-res = (SPK_Message(one,eight))
-print(bin(one))
-print(bin(eight))
-print(bin(res))
-"""
-#%%
+
+
 """
 #Already generated 
 private,ikpub = KeyGeneration(_P_())
@@ -351,25 +340,24 @@ SPKPUB = Point(SPKPUB_x , SPKPUB_y, __E__)
 #END OF MELIH
 """
 
-
 message = SPK_Message(SPKPUB_x,SPKPUB_y)
-print(message)
 signature2 = GenerateSignature(_P_(),message,privKey)
 h2,s2 = signature2[0],signature2[1]
 
-
-#Burası da calisti galiba. Server bisey returnledi 
-print("\nResults can be seen below")
-#mes = {'ID':stuID, 'H': h, 'S': s, 'SPKPUB.X': x, 'SPKPUB.Y': y}
-results = SPKReg(h2,s2,SPKPUB_x,SPKPUB_y) 
-print(results)
-
-#%%
 """
 (85040781858568445399879179922879835942032506645887434621361669108644661638219, 
 46354559534391251764410704735456214670494836161052287022185178295305851364841, 
 107338514472014150452119982252950151955827304841981384723418296022276000650967, 
 49579867550559644093052410637290403102612534910465663433948531076103167174828)
 """
+#Burası da calisti galiba. Server bisey returnledi 
+result = SPKReg(h2,s2,SPKPUB_x,SPKPUB_y) 
+serverSPKPUB_x,serverSPKPUB_y,h,s = result
+serverSPKPUB = Point(serverSPKPUB_x , serverSPKPUB_y, __E__)
+signature = (h,s)
+M = SPK_Message(serverSPKPUB_x,serverSPKPUB_y)
+VerifySignature(signature,M,serverSPKPUB)
+
+
 
 #Section 2.3
