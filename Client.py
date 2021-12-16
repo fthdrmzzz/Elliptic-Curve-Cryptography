@@ -12,7 +12,7 @@ import requests
 
 API_URL = 'http://10.92.52.175:5000/'
 
-stuID =  25132  ## Change this to your ID number
+stuID =  25119  ## Change this to your ID number
 
 def IKRegReq(h,s,x,y):
     mes = {'ID':stuID, 'H': h, 'S': s, 'IKPUB.X': x, 'IKPUB.Y': y}
@@ -182,7 +182,7 @@ def Multiply(k:int,P):
     return Result
 
 
-def KeyGenration(Public):
+def KeyGeneration(Public):
     #Random secret key generation:
     print("\nPublic KEY generation")
     s_A= randint(1,_n_()-2)
@@ -210,10 +210,9 @@ def GenerateSignature(P,M,S_a):
     r = R.x % _n_()
     
     # STEP 4    
-    r_byte = r.to_bytes((r.bit_length() + 7) // 8, byteorder='big') 
-    M_byte = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big')  
-
-    hash_byte = r_byte+M_byte
+    r_shifted = r<< M.bit_length()
+    concat = r_shifted + M
+    hash_byte = concat.to_bytes((concat.bit_length() + 7) // 8, byteorder='big')  
     hash = SHA3_256.new(hash_byte) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
     h = digest % _n_()
@@ -236,11 +235,10 @@ def VerifySignature(Signature,M,Q_a):
     
     # STEP 3   
     #concatenate v||M
-    v_bytes = v.to_bytes((v.bit_length() + 7) // 8, byteorder='big') 
-    M_bytes = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big') 
-
+    v_shifted = v<< M.bit_length()
+    concat = v_shifted+M
     #calculate h
-    hash_bytes = v_bytes + M_bytes
+    hash_bytes = concat.to_bytes((concat.bit_length() + 7) // 8, byteorder='big') 
     hash = SHA3_256.new(hash_bytes) # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big') 
     h_ = digest % _n_()
@@ -249,20 +247,17 @@ def VerifySignature(Signature,M,Q_a):
         
 ### END FUNCTIONS #############################################
  #%%
- #teste true yap ve slaytlardan kontrol et, dogru calisiyor
-pointP = (1,3)
-print(Multiply(5,pointP))
- #%%
+ 
+#######################SECTION 2.1#############################
+ 
 #server's public identity key
 ServPubIK= (93223115898197558905062012489877327981787036929201444813217704012422483432813, 8985629203225767185464920094198364255740987346743912071843303975587695337619)
-
-
 #generate public-private key pair,
 """
-#Already generated for me
-private,ikpub = KeyGenration(_P_())
-print("Private key is ",private)
+#Already generated
+private,ikpub = KeyGeneration(_P_())
 print("IKPUB ", ikpub)
+print("Private key is ",private)
 print("IKPUB.x is ",ikpub.x)
 print("IKPUB.y is ",ikpub.y)
 privKey = private
@@ -270,79 +265,106 @@ IKPUB_x =  ikpub.x
 IKPUB_y =  ikpub.y
 """
 
+#REGISTRATION TO THE SERVER
+
+#FATIH
+privKey = 94521801300613165484736014372466820435205348304503106962012705151542008931493
+IKPUB_x = 13454045804951041800861425145260473887575795168349084317631689200742197438891
+IKPUB_y = 51371775992988002345874638731955426408534503596147761006521551843585840068683
+IKPUB = Point(IKPUB_x , IKPUB_y, __E__)
+signature = GenerateSignature(_P_(),stuID,privKey)
+h,s = signature[0],signature[1]
+#IKRegReq(h,s,IKPUB_x,IKPUB_y)
+ID= 25119 
+CODE= 172135 
+RESET = 239795
+#IKRegVerify(CODE)
+#END OF FATIH
+
+"""
+#MELIH
 privKey = 50653728290329342968310403098566478579527388781281943577810245277141300700776
 IKPUB_x = 23633173257570318923110869411227090891322101986741458964833457092812117061900
 IKPUB_y = 47163067102607020505397555018876217270029402871572808817630261534980589863261
 IKPUB = Point(IKPUB_x , IKPUB_y, __E__)
-
-
-"""
-#Burada calisti ve Verified printledi
-signature= GenerateSignature(_P_(),stuID,privKey)
-h,s = signature[0],signature[1]
-if(VerifySignature(signature,stuID,IKPUB) == True):
-    print("Verified")
-else:
-    print("NOT Verified")
-"""
-
-#REGISTRATION TO THE SERVER
-signature = GenerateSignature(_P_(),stuID,privKey)
-h,s = signature[0],signature[1]
-
-if(VerifySignature(signature,stuID,IKPUB) == True):
-    print("Verified")
-else:
-    print("NOT Verified")
-
-#Bunu acma, ben register oldum zaten, id ni degistir keyleri degistir
 #IKRegReq(h,s,IKPUB_x,IKPUB_y)
-
-#Mail geldi, id: 25132, code: 612303 
-
-#IKRegVerify(612303)
-
-
-
-
-#SECTION 2.2
-
-
-
-def SPK_Message(SPKPUB_x,SPKPUB_y):
-    SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')  
-    SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')  
-    concat_bytes = SPKPUB_x_bytes + SPKPUB_y_bytes
-    message = int.from_bytes(concat_bytes, byteorder='big')
-    
-    return message
-
-
+ID= 25132 
+CODE= 612303 
+#IKRegVerify(CODE)
+#END OF MELIH
 """
-#Already generated for me
-private,ikpub = KeyGenration(_P_())
-print("Private key is ",private)
+
+
+#VERIFICATION EXAMPLE CODE FOR LATER USAGE
+if(VerifySignature(signature,stuID,IKPUB) == True):
+    print("Verified")
+else:
+    print("NOT Verified")
+
+
+print("IK registration phase passed.")
+#%%
+#######################SECTION 2.2#############################
+def SPK_Message(SPKPUB_x,SPKPUB_y):
+    #SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')  
+    #SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')  
+    
+    SPKPUB_x_shifted = SPKPUB_x << SPKPUB_y.bit_length()
+    concat = SPKPUB_x_shifted + SPKPUB_y
+    return concat
+    message = int.from_bytes(concat, byteorder='big')
+    return message
+#%%
+#PROOF THAT MODIFIED CONCAT WORKS.
+"""
+one = 1
+eight = 8
+res = (SPK_Message(one,eight))
+print(bin(one))
+print(bin(eight))
+print(bin(res))
+"""
+#%%
+"""
+#Already generated 
+private,ikpub = KeyGeneration(_P_())
 print("IKPUB ", ikpub)
+print("Private key is ",private)
 print("IKPUB.x is ",ikpub.x)
 print("IKPUB.y is ",ikpub.y)
 privKey = private
 """
+
+#FATIH
+privKeySPK = 23709468699399012413335949851631185403239900516201749468972818471145787539442
+SPKPUB_x = 114590600750797444225622024358886468950692822297300139584690340022315922294658
+SPKPUB_y = 3783880007329682945558395094014369807590612988422275924802569666898674922684
+SPKPUB = Point(SPKPUB_x , SPKPUB_y, __E__)
+#END OF FATIH
+
+"""
+#MELIH
 privKeySPK = 22677646434295206042315781975106516886874077659674676715265076980993252012419
 SPKPUB_x = 66741554407868132438414242495415239856795791414364983712084644345825229511801
 SPKPUB_y =  110275591324510446373768651084057740272103593984944753850742989363408791019218
 SPKPUB = Point(SPKPUB_x , SPKPUB_y, __E__)
+#END OF MELIH
+"""
+
 
 message = SPK_Message(SPKPUB_x,SPKPUB_y)
 print(message)
 signature2 = GenerateSignature(_P_(),message,privKey)
 h2,s2 = signature2[0],signature2[1]
 
-"""
+
 #Burası da calisti galiba. Server bisey returnledi 
 print("\nResults can be seen below")
+#mes = {'ID':stuID, 'H': h, 'S': s, 'SPKPUB.X': x, 'SPKPUB.Y': y}
 results = SPKReg(h2,s2,SPKPUB_x,SPKPUB_y) 
 print(results)
-"""
+
+#%%
 """
 (85040781858568445399879179922879835942032506645887434621361669108644661638219, 
 46354559534391251764410704735456214670494836161052287022185178295305851364841, 
