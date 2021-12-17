@@ -15,6 +15,25 @@ from pick import pick
 import json
 import sys
 
+"""
+Before execute the program run pip install pick
+We used a json database for the project 
+Therefore please do not delete database.json file
+database.json will keep the client key informations 
+Since we (Fatih and Melih) are team members, we created 2 profiles for us.
+When we run the program firstly, the program asks the user (Melih or Fatih)
+After that if we did not have Identity Key informations in database.json it will create one for us.
+If we have already Identity Key informations in database.json we can reset it, or we can move section 2.2 in the documnentation
+In section 2.2 if we did not have SPK we can generate one for us.
+               if we have we can move to section 2.3 or reset our SPK
+In section 2.3 if we did not have OTK, we can generate. If we have it we can reset.
+All the data generated each step will be written into database.json. In this way, in each round we will not lose any information.
+"""
+
+
+
+
+
 API_URL = 'http://10.92.52.175:5000/'
 
 title = 'Who are you? (press SPACE to mark, ENTER to continue): '
@@ -32,6 +51,7 @@ obj = json.loads(data)
 
 person = obj["people"][selected[1]]
 
+#Send Public Identitiy Key Coordinates and corresponding signature
 def IKRegReq(h, s, x, y):
     mes = {'ID': stuID, 'H': h, 'S': s, 'IKPUB.X': x, 'IKPUB.Y': y}
     print("Sending message is: ", mes)
@@ -62,13 +82,8 @@ def OTKReg(keyID,x,y,hmac):
     print(response.json())
     if((response.ok) == False): return False
     else: return True
-#
-def ResetOTK(h,s):
-    mes = {'ID':stuID, 'H': h, 'S': s}
-    print("Sending message is: ", mes)
-    response = requests.delete('{}/{}'.format(API_URL, "ResetOTK"), json = mes)
-    if((response.ok) == False): print(response.json())
-# Reset Code is sent when you first registered
+#Send the reset code to delete your Identitiy Key
+#Reset Code is sent when you first registered
 def ResetIK(rcode):
     mes = {'ID': stuID, 'RCODE': rcode}
     print("Sending message is: ", mes)
@@ -78,7 +93,7 @@ def ResetIK(rcode):
         return False
     else:
         return True
-# Sign your ID  number and send the signature to delete your SPK
+#Sign your ID  number and send the signature to delete your SPK
 def ResetSPK(h, s):
     mes = {'ID': stuID, 'H': h, 'S': s}
     print("Sending message is: ", mes)
@@ -88,50 +103,31 @@ def ResetSPK(h, s):
         return False
     else:
         return True
+#Send the reset code to delete your Identitiy Key
+def ResetOTK(h,s):
+    mes = {'ID':stuID, 'H': h, 'S': s}
+    print("Sending message is: ", mes)
+    response = requests.delete('{}/{}'.format(API_URL, "ResetOTK"), json = mes)
+    if((response.ok) == False): print(response.json())
 
-# kanka, test 'i true yapinca bu fonksiyonlar slayttaki
-# curve degerlerini returnliyor.
-# gecen aksam beraber baktigimiz ornegi test etmek icin
-# bunu True olarak isaretle.
-test = False
 __E__ = Curve.get_curve('secp256k1')
 
 
-# asagidaki degerleri yanlislikla modifiye etmeyelim die fonksiyon
-# icine aldim. pythonda constant variable yokmus.
-# bir de her fonksiyonda parametre olarak n p a P vermek istemedim artik
-# onun yerine direkt bunlari kullaniyim diye
-
 def _n_():
-    if (test):
-        return 7
-    else:
-        ret = __E__.order
-        return ret
+    ret = __E__.order
+    return ret
 def _p_():
-    if (test):
-        return 101
-    else:
-        ret = __E__.field
-        return ret
+    ret = __E__.field
+    return ret
 def _P_():
-    if (test):
-        return (1, 3)
-    else:
-        ret = __E__.generator
-        return ret
+    ret = __E__.generator
+    return ret
 def _a_():
-    if (test):
-        return 1
-    else:
-        ret = __E__.a
-        return ret
+    ret = __E__.a
+    return ret
 def _b_():
-    if (test):
-        return 57
-    else:
-        ret = __E__.b
-        return ret
+    ret = __E__.b
+    return ret
 """
 print("Base point:\n", _P_())
 print("p :", _p_())
@@ -141,26 +137,6 @@ print("n :", _n_())
 """
 
 ### FUNCTIONS #############################################
-def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
-    """
-    Call in a loop to create terminal progress bar
-    @params:\
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
-    # Print New Line on Complete
-    if iteration == total:
-        print()
 
 def egcd(a, b):
     x, y, u, v = 0, 1, 1, 0
@@ -180,51 +156,16 @@ def modinv(a, m):
     else:
         return x % m
 
-    # eger p ve q esitse  y sifirsa 0,0 dondur.
-    # ve p  q esit degilse, px qx aynisya 0,0 dondur.
-    # https://www.nayuki.io/page/elliptic-curve-point-addition-in-projective-coordinates
-
-def Add(P, Q):
-    slope = 0
-    px, py = P[0], P[1]
-    qx, qy = Q[0], Q[1]
-    if (P == Q):
-        if (P == (0, 0)):
-            return (0, 0)
-        else:
-            if (py == 0):
-                return (0, 0)
-            else:
-                slope = ((3 * pow(px, 2) + _a_()) * modinv((2 * py), _p_())) % _p_()
-    if (P != Q):
-        if (P == (0, 0)):
-            return Q
-        elif (Q == (0, 0)):
-            return P
-        else:
-            if (px == qx):
-                return (0, 0)
-            else:
-                slope = (((py - qy)) * modinv((px - qx), _p_())) % _p_()
-
-    rx = (pow(slope, 2) - px - qx) % _p_()
-    ry = (-py + slope * (px - rx)) % _p_()
-
-    return (rx, ry)
-
+#Key generation function defined in section 2.4
 def KeyGeneration(Public):
     # Random secret key generation:
-    #print("\nPublic KEY generation")
     s_A = randint(1, _n_() - 2)
-    # print("Random number s_A is ",s_A)
-
     # Compute the public key:
     # Q_A is the public key
     Q_A = s_A * Public
-    # print("Q_A is ",Q_A)
 
     return s_A, Q_A
-
+#Signature generation function defined in section 2.4
 def GenerateSignature(P, M, S_a):
     # STEP BY STEP
 
@@ -240,7 +181,7 @@ def GenerateSignature(P, M, S_a):
     # STEP 4
     r_byte = r.to_bytes((r.bit_length() + 7) // 8, byteorder='big')
     M_byte = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big')
-
+    #concatenation 
     hash_byte = r_byte + M_byte
     hash = SHA3_256.new(hash_byte)  # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big')
@@ -253,6 +194,7 @@ def GenerateSignature(P, M, S_a):
     # the signature is h, s tuple.
     return (h, s)
 
+#Signature verification function defined in section 2.4
 def VerifySignature(Signature, M, Q_a):
     h, s = Signature[0], Signature[1]
     # STEP 1
@@ -273,6 +215,14 @@ def VerifySignature(Signature, M, Q_a):
     h_ = digest % _n_()
 
     return h == h_
+#Concatenate two integer as bytes and return as an integer
+def concatenateIntPair(SPKPUB_x, SPKPUB_y):
+    SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')
+    SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')
+    concat_bytes = SPKPUB_x_bytes + SPKPUB_y_bytes
+    message = int.from_bytes(concat_bytes, byteorder='big')
+
+    return message
 
 def GenerateHMACKey():
     T = privKeySPK * serverSPKPUB
@@ -364,6 +314,7 @@ else:
         IKPUB_y = person["IKpublic"][1]
         IKPUB = Point(IKPUB_x, IKPUB_y, __E__)
     else:
+        #Reset IK will be called
         ResetIK(person["RESET"])
         person["IKprivate"] = 0
         person["IKpublic"] = 0
@@ -381,7 +332,7 @@ else:
 
 # REGISTRATION TO THE SERVER
 
-# VERIFICATION EXAMPLE CODE FOR LATER USAGE
+        # VERIFICATION EXAMPLE CODE FOR LATER USAGE
         if (VerifySignature(signature, stuID, IKPUB) == True):
             print("Verified")
         else:
@@ -391,13 +342,7 @@ print("Section 2.1 passed.\n#\n")
 
 #######################SECTION 2.2#############################
 print("Section 2.2 started.")
-def concatenateIntPair(SPKPUB_x, SPKPUB_y):
-    SPKPUB_x_bytes = SPKPUB_x.to_bytes((SPKPUB_x.bit_length() + 7) // 8, byteorder='big')
-    SPKPUB_y_bytes = SPKPUB_y.to_bytes((SPKPUB_y.bit_length() + 7) // 8, byteorder='big')
-    concat_bytes = SPKPUB_x_bytes + SPKPUB_y_bytes
-    message = int.from_bytes(concat_bytes, byteorder='big')
 
-    return message
 
 privKeySPK = 0
 SPKPUB_x = 0
@@ -440,15 +385,11 @@ else:
             json.dump(obj, f, ensure_ascii=False, indent=4)
         sys.exit()
 
-
-
-
 message = concatenateIntPair(SPKPUB_x, SPKPUB_y)
 signature2 = GenerateSignature(_P_(), message, privKey)
 h2, s2 = signature2[0], signature2[1]
 
 
-# Burası da calisti galiba. Server bisey returnledi
 result = SPKReg(h2, s2, SPKPUB_x, SPKPUB_y)
 serverSPKPUB_x, serverSPKPUB_y, h, s = result
 serverSPKPUB = Point(serverSPKPUB_x, serverSPKPUB_y, __E__)
@@ -460,10 +401,8 @@ else:
     print("NOT Verified")
 print("Section 2.2 passed.\n#\n")
 
-# Section 2.3
+#######################SECTION 2.3#############################
 print("Section 2.3 started.")
-
-
 
 HMACkey =0
 OTKarray =0
