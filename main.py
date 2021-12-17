@@ -9,6 +9,8 @@ from ecpy.curves import Curve, Point
 from Crypto.Hash import HMAC, SHA3_256,SHA256
 from Crypto import Random  # a bit better secure random number generation
 import requests
+# DO NOT FORGET TO INSTALL PICK
+# pip install pick
 from pick import pick
 import json
 import sys
