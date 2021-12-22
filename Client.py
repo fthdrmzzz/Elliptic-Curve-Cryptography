@@ -109,6 +109,29 @@ def ResetOTK(h,s):
     print("Sending message is: ", mes)
     response = requests.delete('{}/{}'.format(API_URL, "ResetOTK"), json = mes)
     if((response.ok) == False): print(response.json())
+#Pseudo-client will send you 5 messages to your inbox via server when you call this function
+def PseudoSendMsg(h,s):
+    mes = {'ID':stuID, 'H': h, 'S': s}
+    print("Sending message is: ", mes)
+    response = requests.put('{}/{}'.format(API_URL, "PseudoSendMsg"), json = mes)
+    print(response.json())
+
+#get your messages. server will send 1 message from your inbox
+def ReqMsg(h,s):
+    mes = {'ID':stuID, 'H': h, 'S': s}
+    print("Sending message is: ", mes)
+    response = requests.get('{}/{}'.format(API_URL, "ReqMsg"), json = mes)
+    print(response.json())
+    if((response.ok) == True):
+        res = response.json()
+        return res["IDB"], res["OTKID"], res["MSGID"], res["MSG"], res["EK.X"], res["EK.Y"]
+
+#If you decrypted the message, send back the plaintext for grading
+def Checker(stuID, stuIDB, msgID, decmsg):
+    mes = {'IDA':stuID, 'IDB':stuIDB, 'MSGID': msgID, 'DECMSG': decmsg}
+    print("Sending message is: ", mes)
+    response = requests.put('{}/{}'.format(API_URL, "Checker"), json = mes)
+    print(response.json())
 
 __E__ = Curve.get_curve('secp256k1')
 
@@ -181,7 +204,7 @@ def GenerateSignature(P, M, S_a):
     # STEP 4
     r_byte = r.to_bytes((r.bit_length() + 7) // 8, byteorder='big')
     M_byte = M.to_bytes((M.bit_length() + 7) // 8, byteorder='big')
-    #concatenation 
+    #concatenation
     hash_byte = r_byte + M_byte
     hash = SHA3_256.new(hash_byte)  # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big')
@@ -451,4 +474,117 @@ else:
 
 print("Section 2.3 passed.\n#\n")
 
+#######################SECTION 3.1.1#############################
+print("Section 3.1.1 started.")
 
+# Rec = receiver
+# this function takes receivers otk as parameter
+# and generates a session key for the communication
+# practices diffie hellman in some way.
+def GenerateSessionKey(RecOTK,EK):
+    RecOTKprivate,RecOTKpublic = RecOTK
+    EKprivate, EKpublic = KeyGeneration(_P_())
+    EK = (EKprivate,EKpublic)
+    #STEP1
+    T = RecOTKprivate * EKpublic
+    Tx, Tx = T.x, T.y
+
+    #STEP2
+    Tx_byte = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
+    Ty_byte = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
+    # concatenation
+    U = Tx_byte + Ty_byte + b'MadMadWorld'
+
+    #STEP3
+    hash = SHA3_256.new(U)  # hash it
+    digest = int.from_bytes(hash.digest(), byteorder='big')
+    h = digest % _n_()
+    return h
+
+# it said receivers otk will be taken,
+# if this wont be used in the future,
+# can delete this.
+def GetRecOTK():
+    print("TODO: GET RECEIVERS OTK")
+    return (2,(1,1))
+
+
+RecOTK = GetRecOTK()
+EK = 0
+GenerateSessionKey(RecOTK,EK)
+print("Section 3.1.1 passed.\n#\n")
+
+#######################SECTION 3.1.2#############################
+
+#this is key chaining function for
+# multiple messages between users
+# for each message this function shold be called and
+# new key should be generated.
+def KeyDerivation(K_KDF):
+    #STEP1
+    K_KDFkey_byte = K_KDF.to_bytes((K_KDF.bit_length() + 7) // 8, byteorder='big')
+    # concatenation
+    toHash = K_KDFkey_byte + b'LeaveMeAlone'
+    hash = SHA3_256.new(toHash)
+    digest = int.from_bytes(hash.digest(), byteorder='big')
+    K_ENC = digest % _n_()
+
+    #STEP2
+    K_ENC_byte = K_ENC.to_bytes((K_ENC.bit_length() + 7) // 8, byteorder='big')
+    toHash = K_ENC_byte + b'GlovesAndSteeringWheel'
+    hash = SHA3_256.new(toHash)
+    digest = int.from_bytes(hash.digest(), byteorder='big')
+    K_HMAC = digest % _n_()
+
+    #STEP3
+    K_HMAC_byte = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
+    toHash = K_HMAC_byte + b'GlovesAndSteeringWheel'
+    hash = SHA3_256(toHash)
+    digest = int.from_bytes(hash.digest(),byteorder ='big')
+    K_KDFnext = digest% _n_()
+
+    return K_ENC, K_HMAC,K_KDFnext
+
+#this function takes index and
+# generate ith key for the key chain
+def KDFatIndex(index:int,KDFkey):
+    K_ENC, K_HMAC, K_KDFnext = KeyDerivation(KDFkey)
+    for i in range(0,index):
+        K_ENC, K_HMAC, K_KDFnext= KeyDerivation(K_KDFnext)
+
+    return K_ENC, K_HMAC, K_KDFnext
+KDFkey = 0
+
+#Session key generated for both parties
+
+#it is used as kdf and KENC KHMAC created.
+
+
+#IDK how encryption will be done,
+#KENC KHMAC used for message1, recreated for following messages.
+def EncryptMessage(Message,K_ENC, K_HMAC, K_KDFnext):
+    print("TODO: Encryption is done")
+    #next chain of kdf. next encryption will be done accordingly.
+    K_ENC, K_HMAC, K_KDFnext= KeyDerivation(K_KDFnext)
+
+
+
+
+import time
+while True:
+    signature = GenerateSignature(_P_(), stuID, IKprivate)
+    h, s = signature
+    title = '{}, what do you want to do next?'.format(selected[0])
+    options = ['Check my mailbox', 'Ask server to send messages','sleep']
+    picked = pick(options, title, multiselect=False)
+    if(picked[1]==0):
+        try:
+            IDB, OTKID, MSGID,MSG, EKx,EKy = ReqMsg(h,s)
+        except:
+            print("Empty Mailbox")
+    elif (picked[1]==1):
+        PseudoSendMsg(h,s)
+    else:
+        time.sleep(3)
+    print("#\n#\n")
+    time.sleep(2)
