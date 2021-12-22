@@ -224,8 +224,8 @@ def concatenateIntPair(SPKPUB_x, SPKPUB_y):
 
     return message
 
-def GenerateHMACKey():
-    T = privKeySPK * serverSPKPUB
+def GenerateHMACKey(SPKprivate,ServSPKpublic):
+    T = SPKprivate * ServSPKpublic
     Tx_bytes = T.x.to_bytes((T.x.bit_length() + 7) // 8, byteorder='big')
     Ty_bytes = T.y.to_bytes((T.y.bit_length() + 7) // 8, byteorder='big')
     U = Tx_bytes + Ty_bytes + b'NoNeedToRideAndHide'
@@ -260,17 +260,17 @@ def GenerateHMACArray(OTK,HMACkey):
 #######################SECTION 2.1#############################
 print("\nSection 2.1 Started")
 # server's public identity key
-ServPubIK = Point(93223115898197558905062012489877327981787036929201444813217704012422483432813,
+ServIKpublic = Point(93223115898197558905062012489877327981787036929201444813217704012422483432813,
              8985629203225767185464920094198364255740987346743912071843303975587695337619,
             __E__
              )
 
 # generate public-private key pair,
 #if not generated.
-privKey = 0
-IKPUB_x = 0
-IKPUB_y = 0
-IKPUB =0
+IKprivate = 0
+IKpublic_x = 0
+IKpublic_y = 0
+IKpublic =0
 h=0
 s=0
 if(person["IKprivate"]==0):
@@ -281,22 +281,22 @@ if(person["IKprivate"]==0):
         private, ikpub = KeyGeneration(_P_())
         print("IK generated.")
         print("Private key is ", private)
-        print("IKPUB.x is ", ikpub.x)
-        print("IKPUB.y is ", ikpub.y)
-        privKey = private
-        IKPUB_x = ikpub.x
-        IKPUB_y = ikpub.y
+        print("IKpublic.x is ", ikpub.x)
+        print("IKpublic.y is ", ikpub.y)
+        IKprivate = private
+        IKpublic_x = ikpub.x
+        IKpublic_y = ikpub.y
         print("Registering with IK.")
 
-        signature = GenerateSignature(_P_(), stuID, privKey)
+        signature = GenerateSignature(_P_(), stuID, IKprivate)
         h, s = signature[0], signature[1]
 
-        IKRegReq(h, s, IKPUB_x, IKPUB_y)
+        IKRegReq(h, s, IKpublic_x, IKpublic_y)
         CODE = int(input("Please enter the code that is send by mail: "))
         IKRegVerify(CODE)
         RESET = int(input("Please enter the reset code: "))
-        person["IKprivate"] = privKey
-        person["IKpublic"] = [IKPUB_x, IKPUB_y]
+        person["IKprivate"] = IKprivate
+        person["IKpublic"] = [IKpublic_x, IKpublic_y]
         person["CODE"] = CODE
         person["RESET"] = RESET
         obj["people"][selected[1]] = person
@@ -309,10 +309,10 @@ else:
     options = ['Continue to section 2.2', 'Reset IK']
     IKreset = pick(options, title, multiselect=False)
     if(IKreset[1]==0):
-        privKey = person["IKprivate"]
-        IKPUB_x = person["IKpublic"][0]
-        IKPUB_y = person["IKpublic"][1]
-        IKPUB = Point(IKPUB_x, IKPUB_y, __E__)
+        IKprivate = person["IKprivate"]
+        IKpublic_x = person["IKpublic"][0]
+        IKpublic_y = person["IKpublic"][1]
+        IKpublic = Point(IKpublic_x, IKpublic_y, __E__)
     else:
         #Reset IK will be called
         ResetIK(person["RESET"])
@@ -333,7 +333,7 @@ else:
 # REGISTRATION TO THE SERVER
 
         # VERIFICATION EXAMPLE CODE FOR LATER USAGE
-        if (VerifySignature(signature, stuID, IKPUB) == True):
+        if (VerifySignature(signature, stuID, IKpublic) == True):
             print("Verified")
         else:
             print("NOT Verified")
@@ -344,20 +344,20 @@ print("Section 2.1 passed.\n#\n")
 print("Section 2.2 started.")
 
 
-privKeySPK = 0
-SPKPUB_x = 0
-SPKPUB_y = 0
-SPKPUB = 0
+SPKprivate = 0
+SPKpublic_x = 0
+SPKpublic_y = 0
+SPKpublic = 0
 if person["SPKprivate"] == 0:
     title = '{}, you do not have SPK, want to create?'.format(selected[0])
     options = ['Yes', 'No']
     picked = pick(options, title, multiselect=False)
     if(picked[1]==0):
-        privKeySPK, SPKPUB = KeyGeneration(_P_())
-        SPKPUB_x = SPKPUB.x
-        SPKPUB_y = SPKPUB.y
-        person["SPKprivate"] = privKeySPK
-        person["SPKpublic"] = [SPKPUB_x, SPKPUB_y]
+        SPKprivate, SPKpublic = KeyGeneration(_P_())
+        SPKpublic_x = SPKpublic.x
+        SPKpublic_y = SPKpublic.y
+        person["SPKprivate"] = SPKprivate
+        person["SPKpublic"] = [SPKpublic_x, SPKpublic_y]
         obj["people"][selected[1]] = person
         with open('database.json', 'w', encoding='utf-8') as f:
             json.dump(obj, f, ensure_ascii=False, indent=4)
@@ -368,12 +368,12 @@ else:
     options = ['Continue to section 2.3', 'Reset SPK']
     picked = pick(options, title, multiselect=False)
     if (picked[1] == 0):
-        privKeySPK = person["SPKprivate"]
-        SPKPUB_x = person["SPKpublic"][0]
-        SPKPUB_y = person["SPKpublic"][1]
-        SPKPUB = Point(IKPUB_x, IKPUB_y, __E__)
+        SPKprivate = person["SPKprivate"]
+        SPKpublic_x = person["SPKpublic"][0]
+        SPKpublic_y = person["SPKpublic"][1]
+        SPKpublic = Point(IKpublic_x, IKpublic_y, __E__)
     else:
-        h, s = GenerateSignature(_P_(), stuID, privKey)
+        h, s = GenerateSignature(_P_(), stuID, IKprivate)
         ResetSPK(h, s)
         person["SPKprivate"] = 0
         person["SPKpublic"] = 0
@@ -385,17 +385,17 @@ else:
             json.dump(obj, f, ensure_ascii=False, indent=4)
         sys.exit()
 
-message = concatenateIntPair(SPKPUB_x, SPKPUB_y)
-signature2 = GenerateSignature(_P_(), message, privKey)
+message = concatenateIntPair(SPKpublic_x, SPKpublic_y)
+signature2 = GenerateSignature(_P_(), message, IKprivate)
 h2, s2 = signature2[0], signature2[1]
 
 
-result = SPKReg(h2, s2, SPKPUB_x, SPKPUB_y)
-serverSPKPUB_x, serverSPKPUB_y, h, s = result
-serverSPKPUB = Point(serverSPKPUB_x, serverSPKPUB_y, __E__)
+result = SPKReg(h2, s2, SPKpublic_x, SPKpublic_y)
+ServSPKpublic_x, ServSPKpublic_y, h, s = result
+ServSPKpublic = Point(ServSPKpublic_x, ServSPKpublic_y, __E__)
 signature = (h, s)
-M = concatenateIntPair(serverSPKPUB_x, serverSPKPUB_y)
-if VerifySignature(signature, M, ServPubIK):
+M = concatenateIntPair(ServSPKpublic_x, ServSPKpublic_y)
+if VerifySignature(signature, M, ServIKpublic):
     print("Verified")
 else:
     print("NOT Verified")
@@ -412,7 +412,7 @@ if person["OTKarray"] == 0:
     options = ['Yes', 'No']
     picked = pick(options, title, multiselect=False)
     if(picked[1]==0):
-        HMACkey = GenerateHMACKey()
+        HMACkey = GenerateHMACKey(SPKprivate, ServSPKpublic)
         OTKarray = GenerateOTKArray()
         HMACarray = GenerateHMACArray(OTKarray, HMACkey)
 
@@ -439,7 +439,7 @@ else:
         HMACarray = ["HMACarray"]
         print("condinued")
     else:
-        h,s = GenerateSignature(_P_(), stuID, privKey)
+        h,s = GenerateSignature(_P_(), stuID, IKprivate)
         ResetOTK(h,s)
         person["OTKarray"]=0
         person["HMACarray"] = 0
