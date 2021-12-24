@@ -7,6 +7,8 @@ from random import randint, seed
 import sys
 from ecpy.curves import Curve, Point
 from Crypto.Hash import HMAC, SHA3_256,SHA256
+from Crypto.Cipher import AES
+
 from Crypto import Random  # a bit better secure random number generation
 import requests
 # DO NOT FORGET TO INSTALL PICK
@@ -499,8 +501,8 @@ def GenerateSessionKey(RecOTK,EK):
     hash = SHA3_256.new(U)  # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big')
     h = digest % _n_()
-    return h
-
+    return h #session key 
+ 
 # it said receivers otk will be taken,
 # if this wont be used in the future,
 # can delete this.
@@ -538,7 +540,7 @@ def KeyDerivation(K_KDF):
 
     #STEP3
     K_HMAC_byte = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
-    toHash = K_HMAC_byte + b'GlovesAndSteeringWheel'
+    toHash = K_HMAC_byte + b'YouWillNotHaveTheDrink'
     hash = SHA3_256(toHash)
     digest = int.from_bytes(hash.digest(),byteorder ='big')
     K_KDFnext = digest% _n_()
@@ -568,10 +570,16 @@ def EncryptMessage(Message,K_ENC, K_HMAC, K_KDFnext):
     K_ENC, K_HMAC, K_KDFnext= KeyDerivation(K_KDFnext)
 
 
-
+#######################SECTION 3.2#############################
+#This function will decrypt the message that will send by the server
+def Decryption(ciphertext_byte,nonce_byte, k_enc):
+    cipher = AES.new(k_enc, AES.MODE_CTR, nonce = nonce_byte)
+    decryptedtext_byte = cipher.decrypt(ciphertext_byte)
+    decryptedtext = decryptedtext_byte.decode('utf-8')
+    return decryptedtext
 
 import time
-while True:
+if True:
     signature = GenerateSignature(_P_(), stuID, IKprivate)
     h, s = signature
     title = '{}, what do you want to do next?'.format(selected[0])
@@ -579,12 +587,50 @@ while True:
     picked = pick(options, title, multiselect=False)
     if(picked[1]==0):
         try:
-            IDB, OTKID, MSGID,MSG, EKx,EKy = ReqMsg(h,s)
+            for i in range(5):
+                signature = GenerateSignature(_P_(), stuID, IKprivate)
+                h, s = signature
+                IDB, OTKID, MSGID,MSG, EKx,EKy = ReqMsg(h,s)
+                print("IDK: ",IDB)
+                print("OTKID: ",OTKID)
+                print("MSGID: ",MSGID)
+                print("MSG: ",MSG)
+                print("EKx: ",EKx)
+                print("EKy: ",EKy)
+                MSG_bytes = MSG.to_bytes((MSG.bit_length() + 7) // 8, byteorder='big')
+                nonce_bytes =  MSG_bytes[0:8]
+                ciphertext_bytes = MSG_bytes[8:len(MSG_bytes) -32]
+                mac_bytes = MSG_bytes[len(MSG_bytes) - 32:]
+                print("ciphertext_bytes: ",ciphertext_bytes)
+                print("mac_bytes: ",mac_bytes)
+                print("\n\n")
+
+                #FATIH BU KISIM HEM HMAC VERIFICATION HEM DE DECRYPTION YAPIYOR.
+                #ONCE GONDERILEN HMAC ILE AYNI MI DIYE KONTROL EDIYORUM 
+                #ONA GORE DE DECRYPT EDIYORUM
+
+                """
+                #HMAC verification
+                hmac_computed = HMAC.new(k_hmac, ciphertext_bytes, digestmod= SHA256) 
+                hmac_computed = hmac_computed.digest()
+
+                decmsg =''
+                if hmac_computed == mac_bytes:
+                    print("VALID HMAC\n")
+                    decmsg = Decryption(ciphertext_bytes,nonce_bytes,k_enc)
+                else:
+                    print("INVALID HMAC\n")
+                    decmsg = "INVALIDHMAC"
+                
+
+                Checker(stuID, IDB, MSGID, decmsg)
+
+                """
         except:
             print("Empty Mailbox")
     elif (picked[1]==1):
         PseudoSendMsg(h,s)
     else:
-        time.sleep(3)
+        time.sleep(15)
     print("#\n#\n")
-    time.sleep(2)
+    #time.sleep(15)
