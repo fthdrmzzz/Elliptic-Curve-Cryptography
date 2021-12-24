@@ -483,37 +483,25 @@ print("Section 3.1.1 started.")
 # this function takes receivers otk as parameter
 # and generates a session key for the communication
 # practices diffie hellman in some way.
-def GenerateSessionKey(RecOTK,EK):
-    RecOTKprivate,RecOTKpublic = RecOTK
-    EKprivate, EKpublic = KeyGeneration(_P_())
-    EK = (EKprivate,EKpublic)
+def GenerateSessionKey(OTK,EKpublic):
+    OTKprivate,OTKpublic = OTK
     #STEP1
-    T = RecOTKprivate * EKpublic
-    Tx, Tx = T.x, T.y
+    T = OTKprivate * EKpublic
+    Tx, Ty = T.x, T.y
 
     #STEP2
-    Tx_byte = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
-    Ty_byte = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
+    Tx_bytes = Tx.to_bytes((Tx.bit_length() + 7) // 8, byteorder='big')
+    Ty_bytes = Ty.to_bytes((Ty.bit_length() + 7) // 8, byteorder='big')
     # concatenation
-    U = Tx_byte + Ty_byte + b'MadMadWorld'
+    U = Tx_bytes + Ty_bytes + b'MadMadWorld'
 
     #STEP3
     hash = SHA3_256.new(U)  # hash it
     digest = int.from_bytes(hash.digest(), byteorder='big')
-    h = digest % _n_()
-    return h #session key 
+    #h = digest % _n_()
+    return digest #hash.digest() #h #session key
  
-# it said receivers otk will be taken,
-# if this wont be used in the future,
-# can delete this.
-def GetRecOTK():
-    print("TODO: GET RECEIVERS OTK")
-    return (2,(1,1))
 
-
-RecOTK = GetRecOTK()
-EK = 0
-GenerateSessionKey(RecOTK,EK)
 print("Section 3.1.1 passed.\n#\n")
 
 #######################SECTION 3.1.2#############################
@@ -529,21 +517,21 @@ def KeyDerivation(K_KDF):
     toHash = K_KDFkey_byte + b'LeaveMeAlone'
     hash = SHA3_256.new(toHash)
     digest = int.from_bytes(hash.digest(), byteorder='big')
-    K_ENC = digest % _n_()
+    K_ENC = digest #% _n_()
 
     #STEP2
     K_ENC_byte = K_ENC.to_bytes((K_ENC.bit_length() + 7) // 8, byteorder='big')
     toHash = K_ENC_byte + b'GlovesAndSteeringWheel'
     hash = SHA3_256.new(toHash)
     digest = int.from_bytes(hash.digest(), byteorder='big')
-    K_HMAC = digest % _n_()
+    K_HMAC = digest #% _n_()
 
     #STEP3
     K_HMAC_byte = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
     toHash = K_HMAC_byte + b'YouWillNotHaveTheDrink'
-    hash = SHA3_256(toHash)
+    hash = SHA3_256.new(toHash)
     digest = int.from_bytes(hash.digest(),byteorder ='big')
-    K_KDFnext = digest% _n_()
+    K_KDFnext = digest #% _n_()
 
     return K_ENC, K_HMAC,K_KDFnext
 
@@ -551,7 +539,7 @@ def KeyDerivation(K_KDF):
 # generate ith key for the key chain
 def KDFatIndex(index:int,KDFkey):
     K_ENC, K_HMAC, K_KDFnext = KeyDerivation(KDFkey)
-    for i in range(0,index):
+    for i in range(1,index):
         K_ENC, K_HMAC, K_KDFnext= KeyDerivation(K_KDFnext)
 
     return K_ENC, K_HMAC, K_KDFnext
@@ -579,58 +567,92 @@ def Decryption(ciphertext_byte,nonce_byte, k_enc):
     return decryptedtext
 
 import time
-if True:
+while True:
     signature = GenerateSignature(_P_(), stuID, IKprivate)
     h, s = signature
     title = '{}, what do you want to do next?'.format(selected[0])
-    options = ['Check my mailbox', 'Ask server to send messages','sleep']
+    options = ['Check my mailbox', 'Ask server to send messages','sleep','quit']
     picked = pick(options, title, multiselect=False)
     if(picked[1]==0):
-        try:
-            for i in range(5):
-                signature = GenerateSignature(_P_(), stuID, IKprivate)
-                h, s = signature
+        messages = []
+        counter = 0
+        #FOR 5 MESSAGES, THIS RUNS
+        for i in range(5):
+            signature = GenerateSignature(_P_(), stuID, IKprivate)
+            h, s = signature
+            try:
+                #GET THE RESPONSE FROM SERVER. IF CANT, THE MAILBOX IS EMPTY
                 IDB, OTKID, MSGID,MSG, EKx,EKy = ReqMsg(h,s)
+                """
                 print("IDK: ",IDB)
                 print("OTKID: ",OTKID)
                 print("MSGID: ",MSGID)
                 print("MSG: ",MSG)
                 print("EKx: ",EKx)
                 print("EKy: ",EKy)
-                MSG_bytes = MSG.to_bytes((MSG.bit_length() + 7) // 8, byteorder='big')
-                nonce_bytes =  MSG_bytes[0:8]
-                ciphertext_bytes = MSG_bytes[8:len(MSG_bytes) -32]
-                mac_bytes = MSG_bytes[len(MSG_bytes) - 32:]
-                print("ciphertext_bytes: ",ciphertext_bytes)
-                print("mac_bytes: ",mac_bytes)
-                print("\n\n")
-
-                #FATIH BU KISIM HEM HMAC VERIFICATION HEM DE DECRYPTION YAPIYOR.
-                #ONCE GONDERILEN HMAC ILE AYNI MI DIYE KONTROL EDIYORUM 
-                #ONA GORE DE DECRYPT EDIYORUM
-
                 """
-                #HMAC verification
-                hmac_computed = HMAC.new(k_hmac, ciphertext_bytes, digestmod= SHA256) 
-                hmac_computed = hmac_computed.digest()
+            except:
+                print("Empty Mailbox")
+                break
 
-                decmsg =''
-                if hmac_computed == mac_bytes:
-                    print("VALID HMAC\n")
-                    decmsg = Decryption(ciphertext_bytes,nonce_bytes,k_enc)
-                else:
-                    print("INVALID HMAC\n")
-                    decmsg = "INVALIDHMAC"
-                
+            #Configuration
+            #GENERATE SESSION KEY AND CHAIN KEYS ACCORDING TO MESSAGE ID.
+            CurrentOTK = OTKarray[OTKID]
+            CurrentEKpublic = Point(EKx, EKy,__E__)
+            SessionKey = GenerateSessionKey(CurrentOTK,CurrentEKpublic)
+            K_ENC, K_HMAC, K_KDFnext = KDFatIndex(MSGID,SessionKey)
 
-                Checker(stuID, IDB, MSGID, decmsg)
+            #Message is in form:
+            # nonce (8 bytes) - msg - mac (32 bytes)
+            MSG_bytes = MSG.to_bytes((MSG.bit_length() + 7) // 8, byteorder='big')
+            #extracted hmac for verification
+            MAC_bytes = MSG_bytes[len(MSG_bytes) - 32:]
+            #extracted raw encrypted message for verification
+            MSGraw_bytes = MSG_bytes[8:-32]
 
-                """
-        except:
-            print("Empty Mailbox")
+            #HMAC IS CALCULATED.
+            K_HMAC_bytes = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
+            HMACnew_hash = HMAC.new(msg=MSGraw_bytes, digestmod=SHA256, key=K_HMAC_bytes)
+            HMACnew_int = int.from_bytes(HMACnew_hash.digest(), byteorder='big') %_n_()
+            HMACnew_bytes = HMACnew_int.to_bytes((HMACnew_int.bit_length() + 7) // 8, byteorder='big')
+
+            #HMAC VERIFICATION
+            if HMACnew_bytes == MAC_bytes:
+                counter+=1
+                print("VERIFIED")
+                #IF VERIFIED DECRYPT THE MESSAGE
+                # first 8 byte of the message.
+                NONCE_bytes = MSG_bytes[0:8]
+                # message without nonce to get the MAC of the message
+                CIPHERTEXT_bytes = MSG_bytes[8:-32]
+                # message in int format to decrypt it
+                MSG_int = int.from_bytes(MSG_bytes[:len(MSG_bytes) - 32], byteorder='big')
+
+                K_ENC_bytes = K_ENC.to_bytes((K_ENC.bit_length() + 7) // 8, byteorder='big')
+                CIPHER = AES.new(K_ENC_bytes, AES.MODE_CTR, nonce=NONCE_bytes)
+                PLAINTEXT_bytes = CIPHER.decrypt(CIPHERTEXT_bytes)
+
+                messages.append(str(PLAINTEXT_bytes))
+                decrypt_text = PLAINTEXT_bytes.decode('utf-8')
+                #AFTER DECRYPTION SEND IT TO SERVER.
+                Checker(stuID,IDB,MSGID,(decrypt_text))
+            else:
+                print("NOT VERIFIED")
+                #SEND INVALID TO SERVER
+                Checker(stuID, IDB, MSGID, "INVALIDHMAC")
+
+        print("{} out of {} messages are verified\n\n".format(counter,5))
+        print("Messages: ")
+        for i in range(0,5):
+            if len(messages)<i+1:break
+            print(messages[i])
+        time.sleep(5)
     elif (picked[1]==1):
         PseudoSendMsg(h,s)
-    else:
+        time.sleep(3)
+    elif picked[1]==2:
         time.sleep(15)
+    else:
+        break
     print("#\n#\n")
     #time.sleep(15)
