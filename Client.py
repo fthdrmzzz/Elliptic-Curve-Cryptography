@@ -135,6 +135,43 @@ def Checker(stuID, stuIDB, msgID, decmsg):
     response = requests.put('{}/{}'.format(API_URL, "Checker"), json = mes)
     print(response.json())
 
+
+def PseudoSendMsgPH3(h, s):
+    mes = {'ID': stuID, 'H': h, 'S': s}
+    print("Sending message is: ", mes)
+    response = requests.put('{}/{}'.format(API_URL, "PseudoSendMsgPH3"), json=mes)
+    print(response.json())
+
+def SendMsg(idA, idB, otkid, msgid, msg, ekx, eky):
+    mes = {"IDA": idA, "IDB": idB, "OTKID": int(otkID), "MSGID": msgid, "MSG": msg, "EK.X": ekx, "EK.Y": eky}
+    print("Sending message is: ", mes)
+    response = requests.put('{}/{}'.format(API_URL, "SendMSG"), json=mes)
+    print(response.json())
+
+
+def reqOTKB(stuID, stuIDB, h, s):
+    OTK_request_msg = {'IDA': stuID, 'IDB': stuIDB, 'S': s, 'H': h}
+    print("Requesting party B's OTK ...")
+    response = requests.get('{}/{}'.format(API_URL, "ReqOTK"), json=OTK_request_msg)
+    print(response.json())
+    if ((response.ok) == True):
+        print(response.json())
+        res = response.json()
+        return res['KEYID'], res['OTK.X'], res['OTK.Y']
+    else:
+        return -1, 0, 0
+
+
+def Status(stuID, h, s):
+    mes = {'ID': stuID, 'H': h, 'S': s}
+    print("Sending message is: ", mes)
+    response = requests.get('{}/{}'.format(API_URL, "Status"), json=mes)
+    print(response.json())
+    if (response.ok == True):
+        res = response.json()
+        return res['numMSG'], res['numOTK'], res['StatusMSG']
+
+
 __E__ = Curve.get_curve('secp256k1')
 
 
@@ -462,7 +499,6 @@ else:
         HMACkey = person["HMACkey"]
         OTKarray = person["OTKarray"]
         HMACarray = ["HMACarray"]
-        print("condinued")
     else:
         h,s = GenerateSignature(_P_(), stuID, IKprivate)
         ResetOTK(h,s)
@@ -483,10 +519,16 @@ print("Section 3.1.1 started.")
 # this function takes receivers otk as parameter
 # and generates a session key for the communication
 # practices diffie hellman in some way.
-def GenerateSessionKey(OTK,EKpublic):
-    OTKprivate,OTKpublic = OTK
-    #STEP1
-    T = OTKprivate * EKpublic
+def GenerateSessionKey(OTK,EK,receiver = True):
+    if receiver:
+        OTKprivate = OTK
+        EKpublic = EK
+        #STEP1
+        T = OTKprivate * EKpublic
+    else: # if sender
+        OTKpublic =OTK
+        EKprivate = EK
+        T = OTKpublic * EKprivate
     Tx, Ty = T.x, T.y
 
     #STEP2
@@ -571,7 +613,7 @@ while True:
     signature = GenerateSignature(_P_(), stuID, IKprivate)
     h, s = signature
     title = '{}, what do you want to do next?'.format(selected[0])
-    options = ['Check my mailbox', 'Ask server to send messages','sleep','quit']
+    options = ['Check my mailbox', 'Ask server to send messages','Send Messages','Check OTKs','sleep','quit']
     picked = pick(options, title, multiselect=False)
     if(picked[1]==0):
         messages = []
@@ -597,8 +639,8 @@ while True:
 
             #Configuration
             #GENERATE SESSION KEY AND CHAIN KEYS ACCORDING TO MESSAGE ID.
-            CurrentOTK = OTKarray[OTKID]
-            CurrentEKpublic = Point(EKx, EKy,__E__)
+            CurrentOTK = OTKarray[OTKID][0]#private OTK
+            CurrentEKpublic = Point(EKx, EKy,__E__) # public EK
             SessionKey = GenerateSessionKey(CurrentOTK,CurrentEKpublic)
             K_ENC, K_HMAC, K_KDFnext = KDFatIndex(MSGID,SessionKey)
 
@@ -650,8 +692,74 @@ while True:
     elif (picked[1]==1):
         PseudoSendMsg(h,s)
         time.sleep(3)
-    elif picked[1]==2:
+    elif picked[1]==4:
         time.sleep(15)
+    #MELIH BURASI KALDI KANKA ##############################################
+    elif picked[1]==2:
+        stuIDB = input("Please enter ID of receiver to get OTK: ")
+        OTKID, OTKx, OTKy = 0,0,0
+
+        #here server returns internal server error,
+        #therefore I couldnt test rest of the code.
+        try:
+            OTKID, OTKx, OTKy = reqOTKB(stuID,stuIDB,h,s)
+        except:
+            print("problem in otkB request")
+
+        print(OTKx,OTKy)
+        OTKpublic = Point(OTKx,OTKy,__E__)
+        EKprivate, EKpublic = KeyGeneration(_P_())
+        SessionKey= GenerateSessionKey(OTKpublic,EKprivate,receiver=False)
+
+
+        Messages = [b'Selamlar',b'Bonjour',b'selamualeykum',b'hola',b'koniciva']
+        MSGID=1
+        for MSG in Messages:
+            K_ENC, K_HMAC, K_KDFnext = KDFatIndex(MSGID, SessionKey)
+
+
+
+            #CALCULATING CIPHERTEXT
+            K_ENC_bytes = K_ENC.to_bytes((K_ENC.bit_length() + 7) // 8, byteorder='big')
+            CIPHER = AES.new(K_ENC_bytes, AES.MODE_CTR)
+            NONCE_bytes = CIPHER.nonce
+
+            PLAINTEXT_bytes = MSG
+            CIPHERTEXT_bytes = cipher.encrypt(PLAINTEXT_bytes)
+
+            K_HMAC_bytes = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
+            HMAC_hash = HMAC.new(msg=CIPHERTEXT_bytes, digestmod=SHA256, key=K_HMAC_bytes)
+            HMAC_int = int.from_bytes(HMAC_hash.digest(), byteorder='big') % _n_()
+            HMAC_bytes = HMAC_int.to_bytes((HMAC_int.bit_length() + 7) // 8, byteorder='big')
+
+            MSGBLOCK = NONCE_bytes+CIPHERTEXT_bytes+HMAC_bytes
+
+            SendMsg(stuID,stuIDB,OTKID,MSGID,MSGBLOCK,EKpublic.x,EKpublic.y)
+            MSGID+=1
+    # MELIH BURASI KALDI KANKA END ##############################################
+    elif picked[1]==3:
+        numMSG,numOTK,statusMSG =Status(stuID,h,s)
+        print(numMSG,numOTK,statusMSG)
+
+        choice = input("Do you want to register new OTKs? (y/n): ")
+        if choice =="y":
+            print("generating otks")
+            HMACkey = GenerateHMACKey(SPKprivate, ServSPKpublic)
+            OTKarray = GenerateOTKArray()
+            HMACarray = GenerateHMACArray(OTKarray, HMACkey)
+
+            OTKoffset = input("What is first id of newcoming OTKs: ")
+            for i in range(0, len(OTKarray)):
+                OTKpair = OTKarray[i]
+                OTKpub = OTKpair[1]
+                OTKReg(i+int(OTKoffset), OTKpub[0], OTKpub[1], HMACarray[i])
+
+            person["OTKarray"] = OTKarray
+            person["HMACarray"] = HMACarray
+            person["HMACkey"] = HMACkey
+            obj["people"][selected[1]] = person
+            with open('database.json', 'w', encoding='utf-8') as f:
+                json.dump(obj, f, ensure_ascii=False, indent=4)
     else:
         break
     print("#\n#\n")
