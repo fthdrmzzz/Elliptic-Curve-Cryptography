@@ -33,9 +33,6 @@ All the data generated each step will be written into database.json. In this way
 """
 
 
-
-
-
 API_URL = 'http://10.92.52.175:5000/'
 
 title = 'Who are you? (press SPACE to mark, ENTER to continue): '
@@ -143,7 +140,7 @@ def PseudoSendMsgPH3(h, s):
     print(response.json())
 
 def SendMsg(idA, idB, otkid, msgid, msg, ekx, eky):
-    mes = {"IDA": idA, "IDB": idB, "OTKID": int(otkID), "MSGID": msgid, "MSG": msg, "EK.X": ekx, "EK.Y": eky}
+    mes = {"IDA": idA, "IDB": idB, "OTKID": int(otkid), "MSGID": msgid, "MSG": msg, "EK.X": ekx, "EK.Y": eky}
     print("Sending message is: ", mes)
     response = requests.put('{}/{}'.format(API_URL, "SendMSG"), json=mes)
     print(response.json())
@@ -646,6 +643,7 @@ while True:
 
             #Message is in form:
             # nonce (8 bytes) - msg - mac (32 bytes)
+            print(MSG)
             MSG_bytes = MSG.to_bytes((MSG.bit_length() + 7) // 8, byteorder='big')
             #extracted hmac for verification
             MAC_bytes = MSG_bytes[len(MSG_bytes) - 32:]
@@ -690,15 +688,18 @@ while True:
             print(messages[i])
         time.sleep(5)
     elif (picked[1]==1):
-        PseudoSendMsg(h,s)
+        PseudoSendMsgPH3(h,s)
         time.sleep(3)
     elif picked[1]==4:
         time.sleep(15)
-    #MELIH BURASI KALDI KANKA ##############################################
+    #######################SECTION 4.1#############################   
     elif picked[1]==2:
         stuIDB = input("Please enter ID of receiver to get OTK: ")
+        stuIDB = int(stuIDB)
         OTKID, OTKx, OTKy = 0,0,0
 
+        signature = GenerateSignature(_P_(), stuIDB, IKprivate)
+        h, s = signature
         #here server returns internal server error,
         #therefore I couldnt test rest of the code.
         try:
@@ -706,18 +707,19 @@ while True:
         except:
             print("problem in otkB request")
 
-        print(OTKx,OTKy)
+
         OTKpublic = Point(OTKx,OTKy,__E__)
         EKprivate, EKpublic = KeyGeneration(_P_())
         SessionKey= GenerateSessionKey(OTKpublic,EKprivate,receiver=False)
-
-
-        Messages = [b'Selamlar',b'Bonjour',b'selamualeykum',b'hola',b'koniciva']
+        print("Session Key generated for message sending")
+        print("Session key is: ",SessionKey)
+        #Messages = [b'Selamlar',b'Bonjour',b'selamualeykum',b'hola',b'koniciva']
+        #Messages = [b'https://www.youtube.com/watch?v=bc0KhhjJP98',b'https://www.youtube.com/watch?v=2aHkqB2-46k',b'https://www.youtube.com/watch?v=s3Nr-FoA9Ps',b'https://www.youtube.com/watch?v=CvjoXdC-WkM',b'https://www.youtube.com/watch?v=379oevm2fho']
+        Messages = [b'https://www.youtube.com/watch?v=1hLIXrlpRe8',b'https://www.youtube.com/watch?v=KsEjdfXudfM',b'https://www.youtube.com/watch?v=KsEjdfXudfM',b'https://www.youtube.com/watch?v=mJXUNMexT1c',b'https://www.youtube.com/watch?v=s3Nr-FoA9Ps']
+        
         MSGID=1
         for MSG in Messages:
             K_ENC, K_HMAC, K_KDFnext = KDFatIndex(MSGID, SessionKey)
-
-
 
             #CALCULATING CIPHERTEXT
             K_ENC_bytes = K_ENC.to_bytes((K_ENC.bit_length() + 7) // 8, byteorder='big')
@@ -725,7 +727,7 @@ while True:
             NONCE_bytes = CIPHER.nonce
 
             PLAINTEXT_bytes = MSG
-            CIPHERTEXT_bytes = cipher.encrypt(PLAINTEXT_bytes)
+            CIPHERTEXT_bytes = CIPHER.encrypt(PLAINTEXT_bytes)
 
             K_HMAC_bytes = K_HMAC.to_bytes((K_HMAC.bit_length() + 7) // 8, byteorder='big')
             HMAC_hash = HMAC.new(msg=CIPHERTEXT_bytes, digestmod=SHA256, key=K_HMAC_bytes)
@@ -733,10 +735,10 @@ while True:
             HMAC_bytes = HMAC_int.to_bytes((HMAC_int.bit_length() + 7) // 8, byteorder='big')
 
             MSGBLOCK = NONCE_bytes+CIPHERTEXT_bytes+HMAC_bytes
-
-            SendMsg(stuID,stuIDB,OTKID,MSGID,MSGBLOCK,EKpublic.x,EKpublic.y)
+            digest = int.from_bytes(MSGBLOCK, byteorder='big')
+            SendMsg(stuID,stuIDB,OTKID,MSGID,digest,EKpublic.x,EKpublic.y)
             MSGID+=1
-    # MELIH BURASI KALDI KANKA END ##############################################
+    #Status check and generate otks ##############################################
     elif picked[1]==3:
         numMSG,numOTK,statusMSG =Status(stuID,h,s)
         print(numMSG,numOTK,statusMSG)
@@ -764,3 +766,21 @@ while True:
         break
     print("#\n#\n")
     #time.sleep(15)
+
+"""
+b'https://www.youtube.com/watch?v=bc0KhhjJP98'
+b'https://www.youtube.com/watch?v=2aHkqB2-46k'
+b'https://www.youtube.com/watch?v=s3Nr-FoA9Ps'
+b'https://www.youtube.com/watch?v=CvjoXdC-WkM'
+b'https://www.youtube.com/watch?v=379oevm2fho'
+"""
+"""
+b'https://www.youtube.com/watch?v=1hLIXrlpRe8'
+b'https://www.youtube.com/watch?v=KsEjdfXudfM'
+b'https://www.youtube.com/watch?v=KsEjdfXudfM'
+b'https://www.youtube.com/watch?v=mJXUNMexT1c'
+b'https://www.youtube.com/watch?v=s3Nr-FoA9Ps'
+"""
+
+
+
